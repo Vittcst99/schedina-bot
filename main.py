@@ -1,19 +1,20 @@
 from flask import Flask
-import requests  # aggiunto per inviare messaggi Telegram
+import requests
+import os  # 🔐 Per leggere le variabili d'ambiente
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot attivo su Railway", 200
+    return "Bot attivo su Render", 200
 
 @app.route('/health')
 def health():
     return "OK", 200
 
-# 🔔 Nuova rotta /segnali per invio Telegram
-TELEGRAM_TOKEN = '7648194737:AAGl1yvBvHUUZB-WbF-3vVCGB-IDYGLUnOs'
-TELEGRAM_CHAT_ID = '810945111'
+# 🔔 Rotta /segnali per invio Telegram
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 @app.route('/segnali')
 def segnali():
