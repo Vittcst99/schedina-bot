@@ -1,4 +1,5 @@
 from flask import Flask
+import requests  # aggiunto per inviare messaggi Telegram
 
 app = Flask(__name__)
 
@@ -9,6 +10,21 @@ def home():
 @app.route('/health')
 def health():
     return "OK", 200
+
+# 🔔 Nuova rotta /segnali per invio Telegram
+TELEGRAM_TOKEN = 'IL_TUO_TOKEN'
+TELEGRAM_CHAT_ID = 'LA_TUA_CHAT_ID'
+
+@app.route('/segnali')
+def segnali():
+    messaggio = "📈 Nuovo segnale: controlla subito la schedina!"
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        'chat_id': TELEGRAM_CHAT_ID,
+        'text': messaggio
+    }
+    r = requests.post(url, data=payload)
+    return "Segnale inviato", r.status_code
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
