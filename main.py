@@ -12,8 +12,8 @@ def health():
     return "OK", 200
 
 # 🔔 Nuova rotta /segnali per invio Telegram
-TELEGRAM_TOKEN = 'IL_TUO_TOKEN'
-TELEGRAM_CHAT_ID = 'LA_TUA_CHAT_ID'
+TELEGRAM_TOKEN = '7648194737:AAGl1yvBvHUUZB-WbF-3vVCGB-IDYGLUnOs'
+TELEGRAM_CHAT_ID = '810945111'
 
 @app.route('/segnali')
 def segnali():
