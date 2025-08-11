@@ -52,27 +52,36 @@ def genera_schedina():
         "Bundesliga": 78,
         "Ligue 1": 61,
         "Serie B": 136,
-        "Coppa Italia": 137  # ✅ Novità
+        "Coppa Italia": 137
     }
 
     schedina = []
     campionati = list(LEAGUES.items())
     random.shuffle(campionati)
 
-    while len(schedina) < 13:
+    tentativi = 0
+    max_tentativi = 30  # evita loop infinito
+
+    while len(schedina) < 13 and tentativi < max_tentativi:
         nome, league_id = random.choice(campionati)
         partite = get_partite_da_campionato(league_id)
         if partite:
             match = random.choice(partite)
             esito = random.choice(["1", "X", "2"])
             schedina.append(f"{match[0]} - {match[1]} ({nome}) → {esito}")
+        tentativi += 1
+
     return schedina
 
 # 📤 Rotta /schedina per invio Telegram
 @app.route('/schedina')
 def schedina():
     schedina = genera_schedina()
-    messaggio = "🧾 *Schedina del giorno:*\n\n" + "\n".join(f"{i+1}. {riga}" for i, riga in enumerate(schedina))
+
+    if len(schedina) < 13:
+        messaggio = "⚠️ Nessuna schedina disponibile al momento: non ci sono abbastanza partite nei campionati selezionati. Riprova più tardi!"
+    else:
+        messaggio = "🧾 *Schedina del giorno:*\n\n" + "\n".join(f"{i+1}. {riga}" for i, riga in enumerate(schedina))
 
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
