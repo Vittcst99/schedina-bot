@@ -18,17 +18,6 @@ def home():
 def health():
     return "OK", 200
 
-@app.route('/segnali')
-def segnali():
-    messaggio = "📈 Nuovo segnale: controlla subito la schedina!"
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        'chat_id': TELEGRAM_CHAT_ID,
-        'text': messaggio
-    }
-    r = requests.post(url, data=payload)
-    return "Segnale inviato", r.status_code
-
 # 🧠 Funzione per ottenere partite da un campionato
 def get_partite_da_campionato(league_id, season="2025"):
     url = f"https://v3.football.api-sports.io/fixtures?league={league_id}&season={season}&next=10"
@@ -60,7 +49,7 @@ def genera_schedina():
     random.shuffle(campionati)
 
     tentativi = 0
-    max_tentativi = 30  # evita loop infinito
+    max_tentativi = 30
 
     while len(schedina) < 13 and tentativi < max_tentativi:
         nome, league_id = random.choice(campionati)
@@ -73,15 +62,15 @@ def genera_schedina():
 
     return schedina
 
-# 📤 Rotta /schedina per invio Telegram
-@app.route('/schedina')
-def schedina():
+# 📤 Rotta /segnali che ora invia anche la schedina
+@app.route('/segnali')
+def segnali():
     schedina = genera_schedina()
 
     if len(schedina) < 13:
         messaggio = "⚠️ Nessuna schedina disponibile al momento: non ci sono abbastanza partite nei campionati selezionati. Riprova più tardi!"
     else:
-        messaggio = "🧾 *Schedina del giorno:*\n\n" + "\n".join(f"{i+1}. {riga}" for i, riga in enumerate(schedina))
+        messaggio = "📈 Nuovo segnale ricevuto!\n\n🧾 *Schedina del giorno:*\n\n" + "\n".join(f"{i+1}. {riga}" for i, riga in enumerate(schedina))
 
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
@@ -90,7 +79,7 @@ def schedina():
         'parse_mode': 'Markdown'
     }
     r = requests.post(url, data=payload)
-    return "Schedina inviata", r.status_code
+    return "Segnale + schedina inviata", r.status_code
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
