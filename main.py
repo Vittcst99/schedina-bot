@@ -2,6 +2,7 @@ from flask import Flask
 import requests
 import os
 import random
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -32,6 +33,21 @@ def get_partite_da_campionato(league_id, season="2025"):
         partite.append((home, away))
     return partite
 
+# 🧠 Funzione per ottenere partite di Coppa Italia di oggi
+def get_partite_coppa_italia_oggi():
+    oggi = datetime.now().strftime("%Y-%m-%d")
+    url = f"https://v3.football.api-sports.io/fixtures?league=137&season=2025&from={oggi}&to={oggi}"
+    headers = {"x-apisports-key": API_FOOTBALL_KEY}
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    partite = []
+    for match in data.get("response", []):
+        home = match["teams"]["home"]["name"]
+        away = match["teams"]["away"]["name"]
+        partite.append((home, away))
+    return partite
+
 # 🧾 Funzione per generare la schedina
 def genera_schedina():
     LEAGUES = {
@@ -40,8 +56,7 @@ def genera_schedina():
         "Liga": 140,
         "Bundesliga": 78,
         "Ligue 1": 61,
-        "Serie B": 136,
-        "Coppa Italia": 137
+        "Serie B": 136
     }
 
     schedina = []
@@ -59,6 +74,15 @@ def genera_schedina():
             esito = random.choice(["1", "X", "2"])
             schedina.append(f"{match[0]} - {match[1]} ({nome}) → {esito}")
         tentativi += 1
+
+    # 🧩 Fallback: aggiungi partite di Coppa Italia di oggi se servono
+    if len(schedina) < 13:
+        coppa_partite = get_partite_coppa_italia_oggi()
+        for match in coppa_partite:
+            if len(schedina) >= 13:
+                break
+            esito = random.choice(["1", "X", "2"])
+            schedina.append(f"{match[0]} - {match[1]} (Coppa Italia) → {esito}")
 
     return schedina
 
