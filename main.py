@@ -35,8 +35,8 @@ def get_partite_da_campionato(league_id, season="2025"):
 
 # 🧠 Funzione per ottenere partite di Coppa Italia di oggi
 def get_partite_coppa_italia_oggi():
-    oggi = datetime.now().strftime("%Y-%m-%d")
-    url = f"https://v3.football.api-sports.io/fixtures?league=137&season=2025&from={oggi}&to={oggi}"
+    oggi = datetime.utcnow().strftime("%Y-%m-%d")  # Usa UTC per Render
+    url = f"https://v3.football.api-sports.io/fixtures?league=137&from={oggi}&to={oggi}"
     headers = {"x-apisports-key": API_FOOTBALL_KEY}
     response = requests.get(url, headers=headers)
     data = response.json()
@@ -47,6 +47,7 @@ def get_partite_coppa_italia_oggi():
         away = match["teams"]["away"]["name"]
         partite.append((home, away))
     return partite
+
 
 # 🧾 Funzione per generare la schedina
 def genera_schedina():
