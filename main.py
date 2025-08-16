@@ -34,9 +34,12 @@ def get_partite_da_campionato(league_id):
     return partite
 
 # 🧠 Funzione per ottenere partite di Coppa Italia di oggi
+from datetime import datetime, timedelta
+
 def get_partite_coppa_italia_oggi():
     oggi = datetime.utcnow().strftime("%Y-%m-%d")
-    url = f"https://v3.football.api-sports.io/fixtures?league=137&from={oggi}&to={oggi}"
+    domani = (datetime.utcnow() + timedelta(days=1)).strftime("%Y-%m-%d")
+    url = f"https://v3.football.api-sports.io/fixtures?league=137&from={oggi}&to={domani}"
     headers = {"x-apisports-key": API_FOOTBALL_KEY}
     response = requests.get(url, headers=headers)
     data = response.json()
@@ -47,6 +50,7 @@ def get_partite_coppa_italia_oggi():
         away = match["teams"]["away"]["name"]
         partite.append((home, away))
     return partite
+
 
 # 🧾 Funzione per generare la schedina
 def genera_schedina():
