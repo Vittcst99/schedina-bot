@@ -2,7 +2,7 @@ from flask import Flask
 import requests
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -33,9 +33,7 @@ def get_partite_da_campionato(league_id):
         partite.append((home, away))
     return partite
 
-# 🧠 Funzione per ottenere partite di Coppa Italia di oggi
-from datetime import datetime, timedelta
-
+# 🧠 Funzione per ottenere partite di Coppa Italia di oggi e domani
 def get_partite_coppa_italia_oggi():
     oggi = datetime.utcnow().strftime("%Y-%m-%d")
     domani = (datetime.utcnow() + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -51,7 +49,6 @@ def get_partite_coppa_italia_oggi():
         partite.append((home, away))
     return partite
 
-
 # 🧾 Funzione per generare la schedina
 def genera_schedina():
     LEAGUES = {
@@ -63,32 +60,25 @@ def genera_schedina():
         "Serie B": 136
     }
 
-    schedina = []
-    campionati = list(LEAGUES.items())
-    random.shuffle(campionati)
+    tutte_le_partite = []
 
-    tentativi = 0
-    max_tentativi = 30
-
-    while len(schedina) < 13 and tentativi < max_tentativi:
-        nome, league_id = random.choice(campionati)
+    for nome, league_id in LEAGUES.items():
         partite = get_partite_da_campionato(league_id)
-        if partite:
-            match = random.choice(partite)
+        for match in partite:
             esito = random.choice(["1", "X", "2"])
-            schedina.append(f"{match[0]} - {match[1]} ({nome}) → {esito}")
-        tentativi += 1
+            tutte_le_partite.append(f"{match[0]} - {match[1]} ({nome}) → {esito}")
 
-    # 🧩 Fallback: aggiungi partite di Coppa Italia di oggi se servono
-    if len(schedina) < 13:
-        coppa_partite = get_partite_coppa_italia_oggi()
-        for match in coppa_partite:
-            if len(schedina) >= 13:
-                break
-            esito = random.choice(["1", "X", "2"])
-            schedina.append(f"{match[0]} - {match[1]} (Coppa Italia) → {esito}")
+    # Aggiungi partite di Coppa Italia
+    coppa_partite = get_partite_coppa_italia_oggi()
+    for match in coppa_partite:
+        esito = random.choice(["1", "X", "2"])
+        tutte_le_partite.append(f"{match[0]} - {match[1]} (Coppa Italia) → {esito}")
 
-    return schedina
+    # Se ci sono almeno 13 partite, scegli 13 casuali
+    if len(tutte_le_partite) >= 13:
+        return random.sample(tutte_le_partite, 13)
+    else:
+        return []
 
 # 📤 Rotta /segnali che ora invia anche la schedina
 @app.route('/segnali')
@@ -113,13 +103,14 @@ def segnali():
 @app.route('/debug-coppa')
 def debug_coppa():
     oggi = datetime.utcnow().strftime("%Y-%m-%d")
-    url = f"https://v3.football.api-sports.io/fixtures?league=137&from={oggi}&to={oggi}"
+    domani = (datetime.utcnow() + timedelta(days=1)).strftime("%Y-%m-%d")
+    url = f"https://v3.football.api-sports.io/fixtures?league=137&from={oggi}&to={domani}"
     headers = {"x-apisports-key": API_FOOTBALL_KEY}
     response = requests.get(url, headers=headers)
     data = response.json()
 
     if not data.get("response"):
-        return f"Nessuna partita trovata per Coppa Italia il {oggi}", 200
+        return f"Nessuna partita trovata per Coppa Italia tra {oggi} e {domani}", 200
 
     partite = []
     for match in data["response"]:
