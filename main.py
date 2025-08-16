@@ -36,7 +36,7 @@ def get_partite_da_campionato(league_id):
 
 # 🧠 Funzione per ottenere partite di Coppa Italia di oggi e domani
 def get_partite_coppa_italia_oggi():
-    url = "url = "https://v3.football.api-sports.io/fixtures?league=137&next=10"
+   url = "https://v3.football.api-sports.io/fixtures?league=137&next=10"
     headers = {"x-apisports-key": API_FOOTBALL_KEY}
     response = requests.get(url, headers=headers)
     data = response.json()
