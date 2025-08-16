@@ -68,17 +68,14 @@ def genera_schedina():
             esito = random.choice(["1", "X", "2"])
             tutte_le_partite.append(f"{match[0]} - {match[1]} ({nome}) → {esito}")
 
-    # Aggiungi partite di Coppa Italia
     coppa_partite = get_partite_coppa_italia_oggi()
     for match in coppa_partite:
         esito = random.choice(["1", "X", "2"])
         tutte_le_partite.append(f"{match[0]} - {match[1]} (Coppa Italia) → {esito}")
 
-    # Se ci sono almeno 13 partite, scegli 13 casuali
-    if len(tutte_le_partite) >= 13:
-        return random.sample(tutte_le_partite, 13)
-    else:
-        return []
+    print(f"🔍 Partite totali disponibili: {len(tutte_le_partite)}")
+
+    return tutte_le_partite
 
 # 📤 Rotta /segnali che ora invia anche la schedina
 @app.route('/segnali')
