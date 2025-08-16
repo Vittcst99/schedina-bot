@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 from telegram import Bot
 
@@ -21,6 +21,9 @@ def get_partite_da_soccerway(url):
     soup = BeautifulSoup(response.text, 'html.parser')
     partite = []
 
+    oggi = datetime.now().strftime("%d/%m/%Y")
+    domani = (datetime.now() + timedelta(days=1)).strftime("%d/%m/%Y")
+
     for row in soup.select('.matches .match'):
         teams = row.select('.team')
         time_tag = row.select_one('.scoretime .time')
@@ -32,9 +35,8 @@ def get_partite_da_soccerway(url):
             orario = time_tag.text.strip()
             data = date_tag.text.strip()
 
-            # 🎯 Filtra solo partite di oggi
-            oggi = datetime.now().strftime("%d/%m/%Y")
-            if data == oggi:
+            # 🎯 Filtra partite di oggi e domani
+            if data in [oggi, domani]:
                 partite.append((home, away, orario))
     return partite
 
@@ -53,9 +55,9 @@ def genera_schedina_soccerway():
 async def invia_schedina_telegram(partite):
     bot = Bot(token=TOKEN)
     if partite:
-        messaggio = "📋 *Schedina del giorno*\n\n" + "\n".join(partite)
+        messaggio = "📋 *Schedina per oggi e domani*\n\n" + "\n".join(partite)
     else:
-        messaggio = "⚠️ Nessuna schedina disponibile per oggi."
+        messaggio = "⚠️ Nessuna schedina disponibile per oggi e domani."
 
     await bot.send_message(chat_id=CHAT_ID, text=messaggio, parse_mode="Markdown")
 
