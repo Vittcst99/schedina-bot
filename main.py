@@ -2,11 +2,12 @@ import requests
 from bs4 import BeautifulSoup
 import random
 from datetime import datetime
+import asyncio
 from telegram import Bot
 
 # 🔧 Configura il tuo token Telegram
 TOKEN = "7648194737:AAGl1yvBvHUUZB-WbF-3vVCGB-IDYGLUnOs"
-CHAT_ID = "810945111"
+CHAT_ID = 810945111  # chat ID come intero, non stringa
 
 # 🏆 Competizioni da Soccerway
 COMPETITIONS = {
@@ -49,15 +50,15 @@ def genera_schedina_soccerway():
 
     return tutte_le_partite
 
-def invia_schedina_telegram(partite):
+async def invia_schedina_telegram(partite):
     bot = Bot(token=TOKEN)
     if partite:
         messaggio = "📋 *Schedina del giorno*\n\n" + "\n".join(partite)
     else:
         messaggio = "⚠️ Nessuna schedina disponibile per oggi."
 
-    bot.send_message(chat_id=CHAT_ID, text=messaggio, parse_mode="Markdown")
+    await bot.send_message(chat_id=CHAT_ID, text=messaggio, parse_mode="Markdown")
 
 if __name__ == "__main__":
     schedina = genera_schedina_soccerway()
-    invia_schedina_telegram(schedina)
+    asyncio.run(invia_schedina_telegram(schedina))
