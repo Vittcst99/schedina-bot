@@ -20,8 +20,8 @@ def health():
     return "OK", 200
 
 # 🧠 Funzione per ottenere partite da un campionato
-def get_partite_da_campionato(league_id, season="2025"):
-    url = f"https://v3.football.api-sports.io/fixtures?league={league_id}&season={season}&next=10"
+def get_partite_da_campionato(league_id):
+    url = f"https://v3.football.api-sports.io/fixtures?league={league_id}&next=10"
     headers = {"x-apisports-key": API_FOOTBALL_KEY}
     response = requests.get(url, headers=headers)
     data = response.json()
@@ -35,7 +35,7 @@ def get_partite_da_campionato(league_id, season="2025"):
 
 # 🧠 Funzione per ottenere partite di Coppa Italia di oggi
 def get_partite_coppa_italia_oggi():
-    oggi = datetime.utcnow().strftime("%Y-%m-%d")  # Usa UTC per Render
+    oggi = datetime.utcnow().strftime("%Y-%m-%d")
     url = f"https://v3.football.api-sports.io/fixtures?league=137&from={oggi}&to={oggi}"
     headers = {"x-apisports-key": API_FOOTBALL_KEY}
     response = requests.get(url, headers=headers)
@@ -47,7 +47,6 @@ def get_partite_coppa_italia_oggi():
         away = match["teams"]["away"]["name"]
         partite.append((home, away))
     return partite
-
 
 # 🧾 Funzione per generare la schedina
 def genera_schedina():
@@ -105,6 +104,26 @@ def segnali():
     }
     r = requests.post(url, data=payload)
     return "Segnale + schedina inviata", r.status_code
+
+# 🧪 Rotta di debug per Coppa Italia
+@app.route('/debug-coppa')
+def debug_coppa():
+    oggi = datetime.utcnow().strftime("%Y-%m-%d")
+    url = f"https://v3.football.api-sports.io/fixtures?league=137&from={oggi}&to={oggi}"
+    headers = {"x-apisports-key": API_FOOTBALL_KEY}
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    if not data.get("response"):
+        return f"Nessuna partita trovata per Coppa Italia il {oggi}", 200
+
+    partite = []
+    for match in data["response"]:
+        home = match["teams"]["home"]["name"]
+        away = match["teams"]["away"]["name"]
+        partite.append(f"{home} - {away}")
+
+    return "<br>".join(partite), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
