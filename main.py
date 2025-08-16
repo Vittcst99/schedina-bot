@@ -82,8 +82,8 @@ def genera_schedina():
 def segnali():
     schedina = genera_schedina()
 
-    if len(schedina) < 13:
-        messaggio = "⚠️ Nessuna schedina disponibile al momento: non ci sono abbastanza partite nei campionati selezionati. Riprova più tardi!"
+    if not schedina:
+        messaggio = "⚠️ Nessuna schedina disponibile al momento: non ci sono partite nei campionati selezionati."
     else:
         messaggio = "📈 Nuovo segnale ricevuto!\n\n🧾 *Schedina del giorno:*\n\n" + "\n".join(f"{i+1}. {riga}" for i, riga in enumerate(schedina))
 
@@ -95,6 +95,7 @@ def segnali():
     }
     r = requests.post(url, data=payload)
     return "Segnale + schedina inviata", r.status_code
+
 
 # 🧪 Rotta di debug per Coppa Italia
 @app.route('/debug-coppa')
