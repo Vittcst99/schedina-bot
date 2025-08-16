@@ -1,49 +1,42 @@
-from flask import Flask
 import requests
-import os
-import random
 from bs4 import BeautifulSoup
+import random
+from datetime import datetime
+from telegram import Bot
 
-app = Flask(__name__)
+# 🔧 Configura il tuo token Telegram
+TOKEN = "7648194737:AAGl1yvBvHUUZB-WbF-3vVCGB-IDYGLUnOs"
+CHAT_ID = "810945111"
 
-# 🔐 Variabili d'ambiente
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-
-# 🌍 URL Soccerway per ogni competizione
+# 🏆 Competizioni da Soccerway
 COMPETITIONS = {
-    "Serie A": "https://int.soccerway.com/national/italy/serie-a/20252026/schedule/",
-    "Serie B": "https://int.soccerway.com/national/italy/serie-b/20252026/schedule/",
-    "Coppa Italia": "https://int.soccerway.com/national/italy/coppa-italia/20252026/schedule/",
-    "Premier League": "https://int.soccerway.com/national/england/premier-league/20252026/schedule/",
-    "Liga": "https://int.soccerway.com/national/spain/primera-division/20252026/schedule/",
-    "Bundesliga": "https://int.soccerway.com/national/germany/bundesliga/20252026/schedule/",
-    "Ligue 1": "https://int.soccerway.com/national/france/ligue-1/20252026/schedule/"
+    "Serie A": "https://int.soccerway.com/national/italy/serie-a/2025-2026/regular-season/r12345/matches/",
+    "Premier League": "https://int.soccerway.com/national/england/premier-league/2025-2026/regular-season/r12345/matches/",
+    # Aggiungi altre competizioni se vuoi
 }
 
-@app.route('/')
-def home():
-    return "Bot attivo su Render", 200
-
-@app.route('/health')
-def health():
-    return "OK", 200
-
-# 🧠 Scraping da Soccerway
 def get_partite_da_soccerway(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-
     partite = []
+
     for row in soup.select('.matches .match'):
         teams = row.select('.team')
-        if len(teams) == 2:
+        time_tag = row.select_one('.scoretime .time')
+        date_tag = row.select_one('.scoretime .date')
+        
+        if len(teams) == 2 and time_tag and date_tag:
             home = teams[0].text.strip()
             away = teams[1].text.strip()
-            partite.append((home, away))
+            orario = time_tag.text.strip()
+            data = date_tag.text.strip()
+
+            # 🎯 Filtra solo partite di oggi
+            oggi = datetime.now().strftime("%d/%m/%Y")
+            if data == oggi:
+                partite.append((home, away, orario))
     return partite
 
-# 🧾 Genera schedina
 def genera_schedina_soccerway():
     tutte_le_partite = []
 
@@ -51,37 +44,20 @@ def genera_schedina_soccerway():
         partite = get_partite_da_soccerway(url)
         for match in partite:
             esito = random.choice(["1", "X", "2"])
-            tutte_le_partite.append(f"{match[0]} - {match[1]} ({nome}) → {esito}")
+            home, away, orario = match
+            tutte_le_partite.append(f"{orario} → {home} - {away} ({nome}) → {esito}")
 
-    print(f"🔍 Totale partite trovate: {len(tutte_le_partite)}")
     return tutte_le_partite
 
-# 📤 Invio su Telegram
-@app.route('/segnali')
-def segnali():
-    schedina = genera_schedina_soccerway()
-
-    if not schedina:
-        messaggio = "⚠️ Nessuna schedina disponibile al momento: non ci sono partite nei campionati selezionati."
+def invia_schedina_telegram(partite):
+    bot = Bot(token=TOKEN)
+    if partite:
+        messaggio = "📋 *Schedina del giorno*\n\n" + "\n".join(partite)
     else:
-        messaggio = "📈 Nuovo segnale ricevuto!\n\n🧾 *Schedina del giorno:*\n\n" + "\n".join(f"{i+1}. {riga}" for i, riga in enumerate(schedina))
+        messaggio = "⚠️ Nessuna schedina disponibile per oggi."
 
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        'chat_id': TELEGRAM_CHAT_ID,
-        'text': messaggio,
-        'parse_mode': 'Markdown'
-    }
-    r = requests.post(url, data=payload)
-    return "Segnale + schedina inviata", r.status_code
+    bot.send_message(chat_id=CHAT_ID, text=messaggio, parse_mode="Markdown")
 
-# 🧪 Rotta di debug per visualizzare la schedina
-@app.route('/debug-schedina')
-def debug_schedina():
+if __name__ == "__main__":
     schedina = genera_schedina_soccerway()
-    if not schedina:
-        return "⚠️ Nessuna schedina disponibile.", 200
-    return "<br>".join(f"{i+1}. {riga}" for i, riga in enumerate(schedina)), 200
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
+    invia_schedina_telegram(schedina)
