@@ -1,46 +1,55 @@
 import os
 import requests
 from bs4 import BeautifulSoup
-import random
 from datetime import datetime, timedelta
+import random
 import asyncio
 from telegram import Bot
 
-# 🔐 Leggi variabili ambiente
+# 🔐 Variabili ambiente
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = int(os.getenv("TELEGRAM_CHAT_ID"))
 
-# 🎯 Competizioni da filtrare
-COMPETITIONS_DESIDERATE = ["Serie A", "Premier League"]
+# 📅 Date da controllare
+def get_date_list():
+    today = datetime.now().date()
+    return [today, today + timedelta(days=1), today + timedelta(days=2)]
 
-def get_partite_per_data(data_obj):
-    url = f"https://int.soccerway.com/matches/{data_obj.year}/{data_obj.month:02}/{data_obj.day:02}/"
+# 🔍 Estrai partite dal sito Lega Serie A
+def get_partite_lega():
+    url = "https://www.legaseriea.it/it/serie-a/calendario"
     print(f"🔗 Cerco partite da: {url}")
     partite = []
 
     try:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
+        res = requests.get(url)
+        soup = BeautifulSoup(res.text, "html.parser")
+        match_blocks = soup.select(".match")
 
-        for row in soup.select('.matches .match'):
-            teams = row.select('.team')
-            time_tag = row.select_one('.scoretime .time')
-            competition_tag = row.select_one('.competition')
+        date_list = get_date_list()
+        date_strs = [d.strftime("%d/%m/%Y") for d in date_list]
 
-            if len(teams) == 2 and time_tag and competition_tag:
-                home = teams[0].text.strip()
-                away = teams[1].text.strip()
+        for block in match_blocks:
+            date_tag = block.select_one(".match-date")
+            time_tag = block.select_one(".match-time")
+            home_tag = block.select_one(".team-home")
+            away_tag = block.select_one(".team-away")
+
+            if date_tag and time_tag and home_tag and away_tag:
+                data = date_tag.text.strip()
                 orario = time_tag.text.strip()
-                competizione = competition_tag.text.strip()
+                home = home_tag.text.strip()
+                away = away_tag.text.strip()
 
-                if competizione in COMPETITIONS_DESIDERATE:
+                if data in date_strs:
                     esito = random.choice(["1", "X", "2"])
-                    partite.append((data_obj.strftime("%d/%m/%Y"), orario, home, away, competizione, esito))
+                    partite.append((data, orario, home, away, "Serie A", esito))
     except Exception as e:
-        print(f"[ERRORE] Parsing partite: {e}")
+        print(f"[ERRORE] Parsing Lega Serie A: {e}")
 
     return partite
 
+# 📋 Formatta la schedina
 def formatta_schedina(partite):
     giorni = {
         datetime.now().strftime("%d/%m/%Y"): "📅 *Oggi*",
@@ -52,7 +61,7 @@ def formatta_schedina(partite):
     for data, orario, home, away, competizione, esito in partite:
         sezioni[data].append(f"🕒 {orario} → {home} - {away} ({competizione}) → {esito}")
 
-    messaggio = "📋 *Schedina*\n\n"
+    messaggio = "📋 *Schedina Serie A*\n\n"
     for data in giorni:
         if sezioni[data]:
             sezioni[data].sort()
@@ -62,6 +71,7 @@ def formatta_schedina(partite):
         messaggio = messaggio[:3990] + "\n\n✂️ Messaggio troncato"
     return messaggio
 
+# 📤 Invia su Telegram
 async def invia_schedina_telegram(messaggio):
     try:
         bot = Bot(token=TOKEN)
@@ -70,20 +80,13 @@ async def invia_schedina_telegram(messaggio):
     except Exception as e:
         print(f"[ERRORE] Invio Telegram: {e}")
 
+# 🚀 Main
 def main():
-    print("🚀 Avvio bot...")
-    oggi = datetime.now().date()
-    domani = oggi + timedelta(days=1)
-    dopodomani = oggi + timedelta(days=2)
+    print("🚀 Avvio bot Serie A...")
+    partite = get_partite_lega()
 
-    tutte_le_partite = []
-    for giorno in [oggi, domani, dopodomani]:
-        partite = get_partite_per_data(giorno)
-        print(f"📊 Partite trovate per {giorno}: {len(partite)}")
-        tutte_le_partite.extend(partite)
-
-    if tutte_le_partite:
-        messaggio = formatta_schedina(tutte_le_partite)
+    if partite:
+        messaggio = formatta_schedina(partite)
     else:
         messaggio = "⚠️ Nessuna partita trovata per oggi, domani o dopodomani."
 
