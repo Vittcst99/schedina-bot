@@ -1,3 +1,4 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 import random
@@ -5,9 +6,9 @@ from datetime import datetime, timedelta
 import asyncio
 from telegram import Bot
 
-# 🔧 Configura il tuo token Telegram
-TOKEN = "7648194737:AAGl1yvBvHUUZB-WbF-3vVCGB-IDYGLUnOs"
-CHAT_ID = 810945111  # chat ID come intero
+# 🔐 Leggi variabili ambiente
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = int(os.getenv("TELEGRAM_CHAT_ID"))
 
 # 🏆 Competizioni da Soccerway
 COMPETITIONS = {
@@ -24,7 +25,7 @@ def trova_link_giornata(base_url):
             if href and '/matches/' in href:
                 return "https://int.soccerway.com" + href
     except Exception as e:
-        print(f"Errore nel trovare la giornata: {e}")
+        print(f"[ERRORE] Link giornata: {e}")
     return None
 
 def get_partite_da_soccerway(url, nome_competizione):
@@ -53,7 +54,7 @@ def get_partite_da_soccerway(url, nome_competizione):
                     esito = random.choice(["1", "X", "2"])
                     partite.append((data, orario, home, away, nome_competizione, esito))
     except Exception as e:
-        print(f"Errore nel parsing partite: {e}")
+        print(f"[ERRORE] Parsing partite: {e}")
     return partite
 
 def formatta_schedina(partite):
@@ -70,23 +71,39 @@ def formatta_schedina(partite):
     messaggio = "📋 *Schedina*\n\n"
     for data in giorni:
         if sezioni[data]:
-            sezioni[data].sort()  # ordina per orario
+            sezioni[data].sort()
             messaggio += f"{giorni[data]}\n" + "\n".join(sezioni[data]) + "\n\n"
+
+    if len(messaggio) > 4000:
+        messaggio = messaggio[:3990] + "\n\n✂️ Messaggio troncato"
     return messaggio
 
 async def invia_schedina_telegram(messaggio):
-    bot = Bot(token=TOKEN)
-    await bot.send_message(chat_id=CHAT_ID, text=messaggio, parse_mode="Markdown")
+    try:
+        bot = Bot(token=TOKEN)
+        await bot.send_message(chat_id=CHAT_ID, text=messaggio, parse_mode="Markdown")
+        print("[OK] Messaggio Telegram inviato.")
+    except Exception as e:
+        print(f"[ERRORE] Invio Telegram: {e}")
 
 def main():
+    print("🚀 Avvio bot...")
     tutte_le_partite = []
     for nome, base_url in COMPETITIONS.items():
+        print(f"🔍 Cerco partite per {nome}")
         url = trova_link_giornata(base_url)
+        print(f"🌐 Link giornata: {url}")
         if url:
             partite = get_partite_da_soccerway(url, nome)
+            print(f"📊 Partite trovate: {len(partite)}")
             tutte_le_partite.extend(partite)
 
-    messaggio = formatta_schedina(tutte_le_partite)
+    if tutte_le_partite:
+        messaggio = formatta_schedina(tutte_le_partite)
+    else:
+        messaggio = "⚠️ Nessuna partita trovata per oggi, domani o dopodomani."
+
+    print("📨 Messaggio:\n", messaggio)
     asyncio.run(invia_schedina_telegram(messaggio))
 
 if __name__ == "__main__":
