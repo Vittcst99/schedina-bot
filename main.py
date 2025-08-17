@@ -1,58 +1,61 @@
-import os
-import asyncio
-from telegram import Bot
+import requests
+from datetime import datetime
 
-# 🔐 Variabili ambiente
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = int(os.getenv("TELEGRAM_CHAT_ID"))
+# 🔐 Chiavi e ID
+API_KEY = "123"  # tua API key da TheSportsDB
+SERIE_A_ID = "4335"  # ID della Serie A
+TELEGRAM_TOKEN = "INSERISCI_IL_TUO_TOKEN"
+TELEGRAM_CHAT_ID = "INSERISCI_IL_TUO_CHAT_ID"
 
-# 📋 Dati finti per test
-def get_partite_test():
-    return [
-        ("17/08/2025", "20:45", "Milan", "Roma", "Serie A", "1"),
-        ("17/08/2025", "18:00", "Napoli", "Juventus", "Serie A", "X"),
-        ("18/08/2025", "21:00", "Inter", "Lazio", "Serie A", "2")
-    ]
+def get_partite_serie_a():
+    url = f"https://www.thesportsdb.com/api/v1/json/{API_KEY}/eventsnextleague.php?id={SERIE_A_ID}"
+    response = requests.get(url)
+    if response.status_code != 200:
+        print("[ERRORE] API non raggiungibile")
+        return []
 
-# 📋 Formatta la schedina
-def formatta_schedina(partite):
-    giorni = {
-        "17/08/2025": "📅 *Oggi*",
-        "18/08/2025": "📅 *Domani*",
-        "19/08/2025": "📅 *Dopodomani*"
+    data = response.json()
+    partite = []
+
+    for evento in data.get("events", []):
+        squadra1 = evento["strHomeTeam"]
+        squadra2 = evento["strAwayTeam"]
+        data_match = evento["dateEvent"]
+        ora_match = evento["strTime"]
+        giorno = datetime.strptime(data_match, "%Y-%m-%d").strftime("%d/%m")
+        pronostico = genera_pronostico()
+        partite.append(f"🕒 {giorno} {ora_match} → {squadra1} - {squadra2} → {pronostico}")
+
+    return partite
+
+def genera_pronostico():
+    # Pronostico casuale per ora (puoi migliorarlo con logica reale)
+    import random
+    return random.choice(["1", "X", "2"])
+
+def invia_su_telegram(messaggio):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": messaggio,
+        "parse_mode": "Markdown"
     }
-
-    sezioni = {g: [] for g in giorni}
-    for data, orario, home, away, competizione, esito in partite:
-        if data in sezioni:
-            sezioni[data].append(f"🕒 {orario} → {home} - {away} ({competizione}) → {esito}")
-
-    messaggio = "📋 *Schedina Test*\n\n"
-    for data in giorni:
-        if sezioni[data]:
-            sezioni[data].sort()
-            messaggio += f"{giorni[data]}\n" + "\n".join(sezioni[data]) + "\n\n"
-
-    if len(messaggio) > 4000:
-        messaggio = messaggio[:3990] + "\n\n✂️ Messaggio troncato"
-    return messaggio
-
-# 📤 Invia su Telegram
-async def invia_schedina_telegram(messaggio):
-    try:
-        bot = Bot(token=TOKEN)
-        await bot.send_message(chat_id=CHAT_ID, text=messaggio, parse_mode="Markdown")
+    response = requests.post(url, data=payload)
+    if response.status_code == 200:
         print("[OK] Messaggio Telegram inviato.")
-    except Exception as e:
-        print(f"[ERRORE] Invio Telegram: {e}")
+    else:
+        print("[ERRORE] Invio fallito:", response.text)
 
-# 🚀 Main
 def main():
-    print("🚀 Avvio bot TEST...")
-    partite = get_partite_test()
-    messaggio = formatta_schedina(partite)
-    print("📨 Messaggio da inviare:\n", messaggio)
-    asyncio.run(invia_schedina_telegram(messaggio))
+    print("🚀 Avvio bot Serie A reale...")
+    partite = get_partite_serie_a()
+
+    if not partite:
+        messaggio = "⚠️ Nessuna partita trovata per i prossimi giorni."
+    else:
+        messaggio = "📋 *Schedina Serie A*\n\n" + "\n".join(partite)
+
+    invia_su_telegram(messaggio)
 
 if __name__ == "__main__":
     main()
