@@ -1,6 +1,5 @@
 import os
 import requests
-from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import random
 import asyncio
@@ -15,37 +14,32 @@ def get_date_list():
     today = datetime.now().date()
     return [today, today + timedelta(days=1), today + timedelta(days=2)]
 
-# 🔍 Estrai partite dal sito Lega Serie A
-def get_partite_lega():
-    url = "https://www.legaseriea.it/it/serie-a/calendario"
-    print(f"🔗 Cerco partite da: {url}")
+# 🔍 Estrai partite dalla API JSON della Lega Serie A
+def get_partite_lega_json():
+    url = "https://www.legaseriea.it/api/season-calendar?season_id=2025"
+    print(f"🔗 Chiamata API: {url}")
     partite = []
 
     try:
         res = requests.get(url)
-        soup = BeautifulSoup(res.text, "html.parser")
-        match_blocks = soup.select(".match")
-
+        data = res.json()
         date_list = get_date_list()
-        date_strs = [d.strftime("%d/%m/%Y") for d in date_list]
 
-        for block in match_blocks:
-            date_tag = block.select_one(".match-date")
-            time_tag = block.select_one(".match-time")
-            home_tag = block.select_one(".team-home")
-            away_tag = block.select_one(".team-away")
+        for match in data.get("matches", []):
+            date_str = match.get("date")
+            home = match.get("home_team", {}).get("name", "").strip()
+            away = match.get("away_team", {}).get("name", "").strip()
+            time_str = match.get("hour", "00:00").strip()
 
-            if date_tag and time_tag and home_tag and away_tag:
-                data = date_tag.text.strip()
-                orario = time_tag.text.strip()
-                home = home_tag.text.strip()
-                away = away_tag.text.strip()
+            if not date_str or not home or not away:
+                continue
 
-                if data in date_strs:
-                    esito = random.choice(["1", "X", "2"])
-                    partite.append((data, orario, home, away, "Serie A", esito))
+            match_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            if match_date in date_list:
+                esito = random.choice(["1", "X", "2"])
+                partite.append((match_date.strftime("%d/%m/%Y"), time_str, home, away, "Serie A", esito))
     except Exception as e:
-        print(f"[ERRORE] Parsing Lega Serie A: {e}")
+        print(f"[ERRORE] Parsing JSON Lega Serie A: {e}")
 
     return partite
 
@@ -82,8 +76,8 @@ async def invia_schedina_telegram(messaggio):
 
 # 🚀 Main
 def main():
-    print("🚀 Avvio bot Serie A...")
-    partite = get_partite_lega()
+    print("🚀 Avvio bot Serie A JSON...")
+    partite = get_partite_lega_json()
 
     if partite:
         messaggio = formatta_schedina(partite)
